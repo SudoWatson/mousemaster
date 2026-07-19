@@ -62,8 +62,15 @@ public class LinuxOverlay implements Overlay {
         this.screens = screens;
         this.screenManager = new ScreenManager(screens);
         this.platform = platform;
-        hintMeshRenderer = new HintMeshRenderer(TransparentWindow::new,
+        hintMeshRenderer = new HintMeshRenderer(this::createStyledHintMeshWindow,
                 this::hintMeshEndAnimationEndedCallback);
+    }
+
+    /** The window factory the renderer uses: a styled, transparent, click-through window. */
+    private TransparentWindow createStyledHintMeshWindow() {
+        TransparentWindow window = new TransparentWindow();
+        applyX11OverlayFlags(window);
+        return window;
     }
 
     /** Runs when the hint container end-animation finishes: hides the hint mesh, then
@@ -170,7 +177,7 @@ public class LinuxOverlay implements Overlay {
         Objects.requireNonNull(indicator);
         if (indicatorRenderer == null) {
             indicatorRenderer = new IndicatorRenderer();
-            indicatorRenderer.window();
+            applyX11OverlayFlags(indicatorRenderer.window());
         }
         indicatorRenderer.setIndicator(indicator, fadeAnimationEnabled,
                 fadeAnimationDuration, allowFade, mouseRectangle(), cursorVisualCenter(),
@@ -372,17 +379,35 @@ public class LinuxOverlay implements Overlay {
     }
 
     /**
-     * Applies the same X11-specific window flags TransparentWindow's constructor sets.
-     * GridRenderer's internal widget and ScreenshotWidget are shared with Windows and
-     * only set FramelessWindowHint themselves; Windows applies its own native WS_EX_*
-     * equivalents (topmost, click-through, no-activate) to these same widgets after
-     * construction instead, so Linux must do the analogous thing here.
+     * Applies the X11-specific window flags/attributes every overlay window needs:
+     * topmost, bypass-the-window-manager, and click-through. Called on all four window
+     * types (indicator, hint-mesh, grid, screenshot) - GridRenderer's internal widget
+     * and ScreenshotWidget are shared with Windows and only set FramelessWindowHint
+     * themselves (Windows applies its own native WS_EX_* equivalents after construction
+     * instead), and even TransparentWindow-based windows need the real X11 shape call
+     * below, not just the Qt-level attribute set in its constructor.
      */
     private void applyX11OverlayFlags(QWidget widget) {
         widget.setWindowFlags(Qt.WindowType.FramelessWindowHint,
                 Qt.WindowType.X11BypassWindowManagerHint,
                 Qt.WindowType.WindowStaysOnTopHint);
         widget.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents);
+        makeClickThrough(widget);
+    }
+
+    /**
+     * Clears the window's X11 input shape so it accepts no mouse/keyboard input
+     * anywhere and every click passes through to whatever is behind it. Qt's
+     * WA_TransparentForMouseEvents attribute does not reliably achieve this for
+     * frameless, override-redirect (X11BypassWindowManagerHint) windows on every
+     * window manager - confirmed via hardware testing that it alone was not enough -
+     * so the input shape is cleared directly via the XShape extension instead, the
+     * same mechanism compositors and other click-through overlay tools rely on.
+     * winId() forces the underlying native X11 window to be created if it isn't yet.
+     */
+    private void makeClickThrough(QWidget widget) {
+        LibXShape.INSTANCE.XShapeCombineRectangles(display, widget.winId(),
+                LibXShape.ShapeInput, 0, 0, Pointer.NULL, 0, LibXShape.ShapeSet, 0);
     }
 
     private Rectangle virtualDesktopBounds() {
