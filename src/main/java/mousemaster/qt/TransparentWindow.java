@@ -6,7 +6,6 @@ import io.qt.core.Qt;
 import io.qt.gui.QColor;
 import io.qt.gui.QPaintEvent;
 import io.qt.gui.QPainter;
-import io.qt.widgets.QApplication;
 import io.qt.widgets.QWidget;
 
 public class TransparentWindow extends QWidget {
@@ -23,11 +22,6 @@ public class TransparentWindow extends QWidget {
                 Qt.WindowType.X11BypassWindowManagerHint,
                 Qt.WindowType.WindowStaysOnTopHint);
         setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground);
-    }
-
-    protected static QRect primaryScreenGeometry() {
-        var screen = QApplication.primaryScreen();
-        return screen != null ? screen.geometry() : new QRect(0, 0, 1920, 1080);
     }
 
     public void setBackground(QColor color, QRect rect) {
