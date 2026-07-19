@@ -382,6 +382,7 @@ public class LinuxOverlay implements Overlay {
         widget.setWindowFlags(Qt.WindowType.FramelessWindowHint,
                 Qt.WindowType.X11BypassWindowManagerHint,
                 Qt.WindowType.WindowStaysOnTopHint);
+        widget.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents);
     }
 
     private Rectangle virtualDesktopBounds() {
