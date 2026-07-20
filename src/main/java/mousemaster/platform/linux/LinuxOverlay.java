@@ -204,7 +204,7 @@ public class LinuxOverlay implements Overlay {
         if (currentZoom != null)
             return;
         indicatorRenderer.reposition(new Rectangle(x, y, DEFAULT_CURSOR_SIZE,
-                DEFAULT_CURSOR_SIZE), new Point(x, y),
+                DEFAULT_CURSOR_SIZE), new Point(0, 0),
                 screenManager.nearestScreenContaining(x, y), null);
     }
 
@@ -223,7 +223,11 @@ public class LinuxOverlay implements Overlay {
     }
 
     private Point cursorVisualCenter() {
-        return new Point(mouseX(), mouseY());
+        // Linux has no per-cursor-bitmap hotspot lookup (unlike WindowsMouseController's
+        // GetIconInfo-based computeCursorVisualCenter); mirror Windows' own
+        // fallback-when-lookup-fails value of (0, 0) rather than the cursor's actual
+        // visual center relative to its hotspot.
+        return new Point(0, 0);
     }
 
     private Screen activeScreen() {
